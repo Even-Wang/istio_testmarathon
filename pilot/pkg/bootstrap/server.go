@@ -62,6 +62,7 @@ import (
 	"istio.io/istio/pilot/pkg/serviceregistry"
 	"istio.io/istio/pilot/pkg/serviceregistry/aggregate"
 	"istio.io/istio/pilot/pkg/serviceregistry/consul"
+	"istio.io/istio/pilot/pkg/serviceregistry/marathon"
 	"istio.io/istio/pilot/pkg/serviceregistry/external"
 	"istio.io/istio/pilot/pkg/serviceregistry/kube"
 	srmemory "istio.io/istio/pilot/pkg/serviceregistry/memory"
@@ -147,12 +148,21 @@ type ConsulArgs struct {
 	ServerURL string
 	Interval  time.Duration
 }
+// MarathonArgs provides configuration for the Marathon service registry.
+type MarathonArgs struct {
+	Config    string
+	ServerURL string
+	Interval  time.Duration
+}
+
 
 // ServiceArgs provides the composite configuration for all service registries in the system.
 type ServiceArgs struct {
 	Registries []string
 	Consul     ConsulArgs
+	Marathon   MarathonArgs
 }
+
 
 // PilotArgs provides all of the configuration parameters for the Pilot discovery service.
 type PilotArgs struct {
@@ -827,6 +837,10 @@ func (s *Server) initServiceControllers(args *PilotArgs) error {
 			if err := s.initConsulRegistry(serviceControllers, args); err != nil {
 				return err
 			}
+		case serviceregistry.MarathonRegistry:
+			if err := s.initMarathonRegistry(serviceControllers, args); err != nil {
+				return err
+			}
 		case serviceregistry.MCPRegistry:
 			log.Infof("no-op: get service info from MCP ServiceEntries.")
 		default:
@@ -1020,6 +1034,24 @@ func (s *Server) initConsulRegistry(serviceControllers *aggregate.Controller, ar
 	return nil
 }
 
+
+func (s *Server) initMarathonRegistry(serviceControllers *aggregate.Controller, args *PilotArgs) error {
+	log.Infof("Marathon url: %v", args.Service.Marathon.ServerURL)
+	conctl, conerr := marathon.NewController(
+		args.Service.Marathon.ServerURL, args.Service.Marathon.Interval)
+	if conerr != nil {
+		return fmt.Errorf("failed to create Marathon controller: %v", conerr)
+	}
+	serviceControllers.AddRegistry(
+		aggregate.Registry{
+			Name:             serviceregistry.MarathonRegistry,
+			ServiceDiscovery: conctl,
+			ServiceAccounts:  conctl,
+			Controller:       conctl,
+		})
+
+	return nil
+}
 func (s *Server) initGrpcServer() {
 	grpcOptions := s.grpcServerOptions()
 	s.grpcServer = grpc.NewServer(grpcOptions...)

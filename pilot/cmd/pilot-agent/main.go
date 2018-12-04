@@ -115,6 +115,8 @@ var (
 					role.ID = os.Getenv("POD_NAME") + "." + os.Getenv("POD_NAMESPACE")
 				} else if registry == serviceregistry.ConsulRegistry {
 					role.ID = role.IPAddress + ".service.consul"
+				} else if registry == serviceregistry.MarathonRegistry {
+					role.Domain = "service.marathon"
 				} else {
 					role.ID = role.IPAddress
 				}
@@ -126,6 +128,8 @@ var (
 					pilotDomain = "cluster.local"
 				} else if registry == serviceregistry.ConsulRegistry {
 					role.Domain = "service.consul"
+				} else if registry == serviceregistry.MarathonRegistry {
+					role.Domain = "service.marathon"
 				} else {
 					role.Domain = ""
 				}
@@ -331,8 +335,8 @@ func timeDuration(dur *types.Duration) time.Duration {
 func init() {
 	proxyCmd.PersistentFlags().StringVar((*string)(&registry), "serviceregistry",
 		string(serviceregistry.KubernetesRegistry),
-		fmt.Sprintf("Select the platform for service registry, options are {%s, %s, %s, %s, %s}",
-			serviceregistry.KubernetesRegistry, serviceregistry.ConsulRegistry,
+		fmt.Sprintf("Select the platform for service registry, options are {%s, %s,%s, %s, %s, %s}",
+			serviceregistry.KubernetesRegistry, serviceregistry.ConsulRegistry,serviceregistry.MarathonRegistry,
 			serviceregistry.MCPRegistry, serviceregistry.MockRegistry, serviceregistry.ConfigRegistry))
 	proxyCmd.PersistentFlags().StringVar(&role.IPAddress, "ip", "",
 		"Proxy IP address. If not provided uses ${INSTANCE_IP} environment variable.")
